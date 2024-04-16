@@ -103,8 +103,11 @@ body{
  padding-right: 0px;
 }
 
-
-
+/* map */
+#map{
+    height: 400px;
+    width: 80vh;
+}
 
 
 

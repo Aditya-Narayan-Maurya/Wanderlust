@@ -1,3 +1,7 @@
+if(process.env.NODE_ENV != "production"){
+    require('dotenv').config()
+}
+
 const express= require("express");
 const app=express();
 const mongoose = require('mongoose');
@@ -6,6 +10,7 @@ const methodOverride=require("method-override");
 const ejsMate=require("ejs-mate");
 const ExpressError=require("./utils/ExpressError");
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const flash=require("connect-flash");
 const passport=require("passport");
 const LocalStrategy=require("passport-local");
@@ -24,7 +29,8 @@ app.use(express.static(path.join(__dirname,"public")));
 
 app.engine('ejs', ejsMate);
 
-let mongoose_url='mongodb://127.0.0.1:27017/wanderlust';
+// let mongoose_url='mongodb://127.0.0.1:27017/wanderlust';
+const dbUrl=process.env.ATLASDB_URL;
 main().then(()=>{
     console.log("Connected to DB");
 }).catch((err)=>{
@@ -32,11 +38,24 @@ main().then(()=>{
 })
 
 async function main() {
-    await mongoose.connect(mongoose_url);
+    await mongoose.connect(dbUrl);
  }
 
+ const store= MongoStore.create({
+    mongoUrl:dbUrl,
+    crypto:{
+        secret:process.env.SECRET,
+    },
+    touchAfter: 24 * 3600,
+});
+
+// store.on("error",()=>{
+//     console.log("EROOR in MONGO SESSION STORE", err);
+// })
+
  const sessionOptions={
-    secret: 'keyboard cat',
+    store,
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: true,
     cookie:{
@@ -46,9 +65,9 @@ async function main() {
     }
   };
 
-  app.get('/', (req, res) => {
-      res.send('Hello World!')
-    });
+//   app.get('/', (req, res) => {
+//       res.send('Hello World!')
+//     });
 
  app.use(session(sessionOptions));
  app.use(flash());
@@ -65,16 +84,7 @@ async function main() {
     res.locals.error=req.flash("error");
     res.locals.currUser=req.user;
     next();
- })
-
-// app.get("/registerUser", async(req,res)=>{
-//     let fakeUser=new User({
-//         email:"student@gmail.com",
-//         username:"Aditya Maurya"
-//     })
-//     let registerUser= await User.register(fakeUser,"helloworld");
-//     res.send(registerUser);
-// });
+ });
 
 app.use("/listings",listingRouter);
 app.use("/listings/:id/reviews",reviewRouter);
